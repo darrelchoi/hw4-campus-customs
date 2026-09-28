@@ -1,0 +1,88 @@
+{
+  "captured_at": "2026-09-27 15:52:59",
+  "check1_question": "How many Crew Left Chest Hoodies do you have in each size, and what's the price?",
+  "check1_reply": "The Crew Left Chest Hoodie is $68.00. Current quantities: XS 20, S 12, M 0 (sold out), L 8, XL 20, XXL 5. Restock alerts are available if you log in or create an account.",
+  "check1_db": [
+    {
+      "name": "Crew Left Chest Hoodie",
+      "price": 68.0,
+      "size": "XS",
+      "quantity": 20
+    },
+    {
+      "name": "Crew Left Chest Hoodie",
+      "price": 68.0,
+      "size": "S",
+      "quantity": 12
+    },
+    {
+      "name": "Crew Left Chest Hoodie",
+      "price": 68.0,
+      "size": "M",
+      "quantity": 0
+    },
+    {
+      "name": "Crew Left Chest Hoodie",
+      "price": 68.0,
+      "size": "L",
+      "quantity": 8
+    },
+    {
+      "name": "Crew Left Chest Hoodie",
+      "price": 68.0,
+      "size": "XL",
+      "quantity": 20
+    },
+    {
+      "name": "Crew Left Chest Hoodie",
+      "price": 68.0,
+      "size": "XXL",
+      "quantity": 5
+    }
+  ],
+  "check2_question": "What hoodies do you have?",
+  "check2_reply": "We have 27 hoodies in stock, ranging from $45.00\u2013$88.00. Standouts include the Basic Hoodie Big Yale, Champion Full Zip Hood, and Crew Left Chest Hoodie\u2014I\u2019ve put the available styles on the page for you.",
+  "check2_grid_title": "HOODIES",
+  "check2_grid_meta": "Showing 12 of 27 matches \u00b7 See all in the shop \u2192",
+  "check2_card_count": 12,
+  "check2_first_cards": [
+    "BASIC HOODIE BIG YALE",
+    "BROOKS BROTHERS DOUBLE KNIT FULL ZIP HOODIE YALE",
+    "CHAMPION FULL ZIP HOOD",
+    "CHAMPION REVERSE WEAVE HOODIE 1"
+  ],
+  "check2_clicked": "BROOKS BROTHERS DOUBLE KNIT FULL ZIP HOODIE YALE",
+  "check2_detail_url": "http://localhost:5173/products/brooks-brothers-double-knit-full-zip-hoodie-yale",
+  "check2_db": [
+    {
+      "matches": 27,
+      "min_price": 45.0,
+      "max_price": 88.0
+    }
+  ],
+  "check3_question": "Is this in stock in XXL, and how much is it?",
+  "streaming_steps.png": "\u2713\nReading your question\u2026\n\n\u2713\nChecking live stock for Ice Hockey Left Chest Hoodie (XXL)\u2026\n\nChecking the price of Ice Hockey Left Chest Hoodie\u2026",
+  "check3_reply": "Yes\u2014XXL is in stock (25 available), and the Ice Hockey Left Chest Hoodie is $68.00.",
+  "check3_db": [
+    {
+      "name": "Ice Hockey Left Chest Hoodie",
+      "price": 68.0,
+      "size": "XXL",
+      "quantity": 25
+    }
+  ],
+  "bonus_question": "Please notify me when the Ice Hockey Left Chest Hoodie is back in size XL.",
+  "bonus_reply": "Size XL is sold out in the Ice Hockey Left Chest Hoodie. Done! You\u2019ll see a notice here in the chat when it\u2019s back in XL.",
+  "bonus_chip": [
+    "\ud83d\udd14 Restock alert set: Ice Hockey Left Chest Hoodie \u00b7 XL"
+  ],
+  "bonus_tile": "XL\nSold out\n\ud83d\udd14 Alert set",
+  "bonus_db": [
+    {
+      "product_id": "ice-hockey-left-chest-hoodie",
+      "size": "XL",
+      "created_at": "2026-09-27 19:53:25",
+      "current_stock": 0
+    }
+  ]
+}

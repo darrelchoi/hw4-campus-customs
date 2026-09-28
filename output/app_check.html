@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Campus Customs — App Check (Problem 11)</title>
+<style>
+  :root { --navy: #0c233f; --blue: #7ba0c5; --soft: #e8f0f8; --border: #e1e7ec; --text: #1f2937; --muted: #606975; --ok: #1a7f4b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--text); background: #f7f7f7; line-height: 1.55; }
+  header { background: var(--navy); color: #fff; padding: 2rem 1.5rem; }
+  header h1 { margin: 0 0 .3rem; font-size: 1.9rem; letter-spacing: .02em; }
+  header p { margin: 0; color: #c9d6e4; }
+  main { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+  .summary { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+  .summary h2 { margin: 0 0 .6rem; font-size: 1.1rem; color: var(--navy); }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { border: 1px solid var(--border); padding: .45rem .6rem; text-align: left; vertical-align: top; }
+  th { background: var(--soft); color: var(--navy); }
+  .pass { color: var(--ok); font-weight: 700; white-space: nowrap; }
+  section.check { background: #fff; border: 1px solid var(--border); border-top: 5px solid var(--navy); border-radius: 8px; padding: 1.25rem 1.5rem 1.5rem; margin-bottom: 2rem; }
+  section.check h2 { margin: 0 0 .25rem; color: var(--navy); font-size: 1.45rem; }
+  .ask { margin: .25rem 0 1rem; color: var(--muted); }
+  .ask code { background: var(--soft); color: var(--navy); padding: .1rem .4rem; border-radius: 4px; font-size: .95em; }
+  figure { margin: 0 0 1.25rem; }
+  figure a { display: block; }
+  figure img { width: 100%; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 16px rgba(12,35,63,.10); }
+  figcaption { margin-top: .45rem; font-size: .92rem; color: var(--muted); }
+  figcaption b { color: var(--navy); }
+  .proves { background: var(--soft); border-left: 4px solid var(--navy); padding: .75rem 1rem; border-radius: 0 6px 6px 0; margin: 0 0 1rem; }
+  .proves b { color: var(--navy); }
+  .evidence h3 { font-size: 1rem; color: var(--navy); margin: 1rem 0 .4rem; }
+  .sold { color: #c0392b; font-weight: 700; }
+  footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 1rem 1.5rem 2.5rem; }
+  code { font-family: ui-monospace, Menlo, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Campus Customs — App Check</h1>
+  <p>Problem 11 · Live site tested at http://localhost:5173 (React + Vite) with the FastAPI + PydanticAI backend · Captured 2026-09-27 15:53 by <code>scripts/capture_app_check.py</code> (Playwright)</p>
+</header>
+
+<main>
+  <div class="summary">
+    <h2>Summary</h2>
+    <table>
+      <tr><th>#</th><th>Check</th><th>Result</th></tr>
+      <tr><td>1</td><td>Chat checks an item's inventory and gives honest stock and price from <code>data/campus_customs.db</code></td><td class="pass">✓ PASS</td></tr>
+      <tr><td>2</td><td>Category question ("What hoodies do you have?") puts dynamic product cards on the page</td><td class="pass">✓ PASS</td></tr>
+      <tr><td>3</td><td>Problem 9 usability feature: live progress steps while the agent works (streaming)</td><td class="pass">✓ PASS</td></tr>
+      <tr><td>+</td><td>Bonus, Problem 9: restock alert for a sold-out size</td><td class="pass">✓ PASS</td></tr>
+    </table>
+    <p style="margin:.7rem 0 0;font-size:.88rem;color:var(--muted)">Click any screenshot to open it full size. Database rows below each check were read directly from <code>data/campus_customs.db</code> (read-only) at capture time.</p>
+  </div>
+
+  <!-- ===================== CHECK 1 ===================== -->
+  <section class="check" id="check-1">
+    <h2>1. Chat checks inventory: honest stock and price from the database</h2>
+    <p class="ask">Shopper (guest, on the Crew Left Chest Hoodie page) asked: <code>How many Crew Left Chest Hoodies do you have in each size, and what's the price?</code></p>
+
+    <figure>
+      <a href="app_check_images/inventory_chat.png"><img src="app_check_images/inventory_chat.png" alt="Chat reply listing per-size stock and price for the Crew Left Chest Hoodie" /></a>
+      <figcaption><b>Screenshot 1a:</b> chat reply: "The Crew Left Chest Hoodie is <b>$68.00</b>. Current quantities: <b>XS 20, S 12, M 0 (sold out), L 8, XL 20, XXL 5</b>."</figcaption>
+    </figure>
+    <figure>
+      <a href="app_check_images/inventory_product_page.png"><img src="app_check_images/inventory_product_page.png" alt="Product page size grid for the Crew Left Chest Hoodie" /></a>
+      <figcaption><b>Screenshot 1b:</b> the same product's page (built from the database): $68.00, XS 20 · S 12 · <span class="sold">M Sold out</span> · L 8 · XL 20 · XXL "Only 5 left".</figcaption>
+    </figure>
+
+    <p class="proves"><b>What this proves:</b> the agent looked up live stock with its <code>check_stock</code> / <code>get_price</code> tools, and every number it gave matches the database exactly, including clearly saying <b>M is sold out</b>. Nothing was invented.</p>
+
+    <div class="evidence">
+      <h3>Database rows (catalogue ⨝ inventory, product_id = crew-left-chest-hoodie)</h3>
+      <table>
+        <tr><th>Size</th><th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th><th>XXL</th><th>Price</th></tr>
+        <tr><td>Quantity in DB</td><td>20</td><td>12</td><td class="sold">0</td><td>8</td><td>20</td><td>5</td><td>$68.00</td></tr>
+        <tr><td>Chat said</td><td>20</td><td>12</td><td class="sold">0 (sold out)</td><td>8</td><td>20</td><td>5</td><td>$68.00</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== CHECK 2 ===================== -->
+  <section class="check" id="check-2">
+    <h2>2. Category question → dynamic product cards on the page</h2>
+    <p class="ask">Shopper (guest, on the Home page) asked: <code>What hoodies do you have?</code></p>
+
+    <figure>
+      <a href="app_check_images/hoodies_chat_and_cards.png"><img src="app_check_images/hoodies_chat_and_cards.png" alt="Hoodie product cards appear on the page under From your chat, next to the chat reply" /></a>
+      <figcaption><b>Screenshot 2a:</b> the agent replied "We have <b>27 hoodies</b> in stock, ranging from <b>$45.00–$88.00</b>… I've put the available styles on the page," and a <b>"From your chat · Hoodies"</b> grid appeared on the page: "Showing 12 of 27 matches · See all in the shop →".</figcaption>
+    </figure>
+    <figure>
+      <a href="app_check_images/hoodies_cards_grid.png"><img src="app_check_images/hoodies_cards_grid.png" alt="Grid of 12 hoodie product cards with image, name, price and short description" /></a>
+      <figcaption><b>Screenshot 2b:</b> the chat is minimized, showing all 12 cards. Each has an image, garment type, name, short description, and price.</figcaption>
+    </figure>
+    <figure>
+      <a href="app_check_images/hoodies_card_detail.png"><img src="app_check_images/hoodies_card_detail.png" alt="Detail page opened by clicking a chat-placed card" /></a>
+      <figcaption><b>Screenshot 2c:</b> clicking the 2nd chat card opened its single-item page (<code>/products/brooks-brothers-double-knit-full-zip-hoodie-yale</code>): large image, full description, $88.00, and the size/stock grid. The chat grid folds into a bar above it.</figcaption>
+    </figure>
+
+    <p class="proves"><b>What this proves:</b> the agent returned <b>structured product matches</b> (ids + title), and the frontend rendered them as real product cards on the page. The cards still open the Problem 3 detail view. The count and price range in the reply match the database.</p>
+
+    <div class="evidence">
+      <h3>Database check (catalogue items matching "hoodie")</h3>
+      <table>
+        <tr><th></th><th>Matches</th><th>In stock</th><th>Lowest price</th><th>Highest price</th><th>Cards on page</th></tr>
+        <tr><td>Database</td><td>27</td><td>27</td><td>$45.00</td><td>$88.00</td><td>—</td></tr>
+        <tr><td>Site / chat</td><td>27</td><td>27 ("in stock")</td><td>$45.00</td><td>$88.00</td><td>12 (max per answer) + "See all" link</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== CHECK 3 ===================== -->
+  <section class="check" id="check-3">
+    <h2>3. Usability feature (Problem 9): live progress steps while the agent works</h2>
+    <p class="ask">Shopper (guest, on the Ice Hockey Left Chest Hoodie page) asked: <code>Is this in stock in XXL, and how much is it?</code></p>
+
+    <figure>
+      <a href="app_check_images/streaming_steps.png"><img src="app_check_images/streaming_steps.png" alt="Chat showing live progress steps with checkmarks and a spinner" /></a>
+      <figcaption><b>Screenshot 3a (mid-answer):</b> instead of silent typing dots, the chat streams each real step: ✓ Reading your question… → ✓ <b>Checking live stock for Ice Hockey Left Chest Hoodie (XXL)…</b> → ◌ <b>Checking the price…</b> (in progress).</figcaption>
+    </figure>
+    <figure>
+      <a href="app_check_images/streaming_final.png"><img src="app_check_images/streaming_final.png" alt="Final verified answer after the progress steps" /></a>
+      <figcaption><b>Screenshot 3b (finished):</b> the verified answer replaces the steps: "Yes, <b>XXL is in stock (25 available)</b>, and the Ice Hockey Left Chest Hoodie is <b>$68.00</b>." (Database: XXL = 25, price $68.00.)</figcaption>
+    </figure>
+
+    <p class="proves"><b>What this proves:</b> the <code>POST /api/chat/stream</code> endpoint sends progress as the agent's tools run, so the shopper sees activity right away and can watch stock being checked live. The final answer arrives only after the price/stock double-check, and it matches the database.</p>
+  </section>
+
+  <!-- ===================== BONUS ===================== -->
+  <section class="check" id="bonus">
+    <h2>Bonus (Problem 9): restock alert for a sold-out size</h2>
+    <p class="ask">Logged in as the demo account <b>Eli</b>, clicked <b>🔔 Notify me</b> on the sold-out <b>XL</b> tile, which pre-filled: <code>Please notify me when the Ice Hockey Left Chest Hoodie is back in size XL.</code></p>
+
+    <figure>
+      <a href="app_check_images/restock_alert.png"><img src="app_check_images/restock_alert.png" alt="Chat confirming a restock alert with a green chip" /></a>
+      <figcaption><b>Screenshot 4:</b> the agent confirmed "<b>Size XL is sold out</b>… Done! You'll see a notice here in the chat when it's back in XL," with a green chip: <b>🔔 Restock alert set: Ice Hockey Left Chest Hoodie · XL</b>. The product page's XL tile then read "Sold out · 🔔 Alert set".</figcaption>
+    </figure>
+
+    <p class="proves"><b>What this proves:</b> the new <code>create_restock_alert</code> tool saved a real row only after checking that XL is sold out. Database row: <code>restock_alerts(eli.yale@yale.edu, ice-hockey-left-chest-hoodie, XL, created 2026-09-27 19:53:25 UTC)</code>, current XL stock 0.</p>
+  </section>
+</main>
+
+<footer>
+  Campus Customs class demo (hw4). Not affiliated with Campus Customs or Yale University. Screenshots are 1440×900 at 1.5× scale and live in <code>output/app_check_images/</code>. Raw replies and DB rows are in <code>app_check_images/results.json</code>.
+</footer>
+</body>
+</html>

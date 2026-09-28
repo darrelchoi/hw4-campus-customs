@@ -1,0 +1,3 @@
+# Dev/test tools (not needed to run the site)
+-r requirements.txt
+playwright  # scripts/capture_app_check.py (Problem 11 screenshots); uses the Chromium from `playwright install chromium`
