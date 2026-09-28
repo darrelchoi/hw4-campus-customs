@@ -405,5 +405,101 @@
       "basic-hoodie-big-yale"
     ],
     "alerts_created": []
+  },
+  {
+    "run_id": "d3a9c9dcea4c",
+    "started_at": "2026-09-28T01:12:08.998Z",
+    "ended_at": "2026-09-28T01:12:15.019Z",
+    "duration_ms": 6017,
+    "model": "gpt-5.6-luna",
+    "endpoint": "/api/chat",
+    "user": "user_id=1",
+    "page": null,
+    "message": "[redacted shopper message, 54 chars]",
+    "redactions": [],
+    "history_turns": 14,
+    "events": [
+      {
+        "t": "2026-09-28T01:12:12.166Z",
+        "type": "tool_call",
+        "tool": "check_stock",
+        "args": "{\"product\": \"crew-left-chest-hoodie\", \"size\": \"M\"}",
+        "ok": true,
+        "result": "Crew Left Chest Hoodie: Size M is SOLD OUT (0 left). In stock: XS (20), S (12), L (8), XL (20), XXL (5). Sold out: M.",
+        "ms": 1
+      },
+      {
+        "t": "2026-09-28T01:12:12.166Z",
+        "type": "tool_call",
+        "tool": "get_price",
+        "args": "{\"product\": \"crew-left-chest-hoodie\"}",
+        "ok": true,
+        "result": "{\"product_id\": \"crew-left-chest-hoodie\", \"name\": \"Crew Left Chest Hoodie\", \"price\": 68.0, \"price_display\": \"$68.00\", \"currency\": \"USD\"}",
+        "ms": 1
+      }
+    ],
+    "tool_calls": 2,
+    "double_check_retries": 0,
+    "usage": {
+      "model_requests": 2,
+      "input_tokens": 9935,
+      "output_tokens": 230
+    },
+    "stop_reason": "final_answer",
+    "error": null,
+    "reply": "The **Crew Left Chest Hoodie** is **$68.00**. **Size M is sold out**; it’s currently available in XS, S, L, XL, and XXL. Want me to set a restock alert for M?",
+    "product_ids": [
+      "crew-left-chest-hoodie"
+    ],
+    "alerts_created": []
+  },
+  {
+    "run_id": "7fb60041bc8f",
+    "started_at": "2026-09-28T01:12:27.861Z",
+    "ended_at": "2026-09-28T01:12:33.710Z",
+    "duration_ms": 5848,
+    "model": "gpt-5.6-luna",
+    "endpoint": "/api/chat/stream",
+    "user": "guest",
+    "page": null,
+    "message": "[redacted shopper message, 25 chars]",
+    "redactions": [],
+    "history_turns": 0,
+    "events": [
+      {
+        "t": "2026-09-28T01:12:30.463Z",
+        "type": "tool_call",
+        "tool": "search_products",
+        "args": "{\"query\": \"hoodie\"}",
+        "ok": true,
+        "result": "total_matches=27 shown=12 price_range=$45.00–$88.00 first=['Basic Hoodie Big Yale', 'Brooks Brothers Double Knit Full Zip Hoodie Yale', 'Champion Full Zip Hood', 'Champion Reverse Weave Hoodie 1']",
+        "ms": 2
+      }
+    ],
+    "tool_calls": 1,
+    "double_check_retries": 0,
+    "usage": {
+      "model_requests": 2,
+      "input_tokens": 9417,
+      "output_tokens": 300
+    },
+    "stop_reason": "final_answer",
+    "error": null,
+    "reply": "We have **27 hoodies**, ranging from **$45.00–$88.00**. Standouts include the Basic Hoodie Big Yale, Champion Full Zip Hood, and the Vintage Bulldog styles. I've put the hoodie options on the page for you—Boola boola!",
+    "product_ids": [
+      "basic-hoodie-big-yale",
+      "brooks-brothers-double-knit-full-zip-hoodie-yale",
+      "champion-full-zip-hood",
+      "champion-reverse-weave-hoodie-1",
+      "crew-left-chest-hoodie",
+      "district-vit-hoodie-vintage-bulldog",
+      "district-vit-hoodie-vintage-sailor-bulldog",
+      "fencing-left-chest-hoodie",
+      "ice-hockey-left-chest-hoodie",
+      "sailing-left-chest-hoodie",
+      "squash-left-chest-hoodie",
+      "the-forest-school-hoodie"
+    ],
+    "alerts_created": []
   }
 ]

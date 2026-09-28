@@ -22,7 +22,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Cookie, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 
-from db import connect_rw as connect
+from tools import connect_rw as connect
 
 ALGORITHM = "pbkdf2_sha256"
 ITERATIONS = 600_000  # OWASP 2023 guidance for PBKDF2-HMAC-SHA256

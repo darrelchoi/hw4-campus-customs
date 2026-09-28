@@ -25,11 +25,18 @@ from fastapi.staticfiles import StaticFiles
 from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UsageLimitExceeded
 
 import chat_store
-import db
 from agent import redact_sensitive, run_chat
 from auth import init_auth_tables, router as auth_router, user_for_token
-from tools import active_alerts, init_restock_table, pop_restocked
 from models import MAX_HISTORY_TURNS, ChatHistoryResponse, ChatRequest, ChatResponse, CustomerContext, RestockAlert
+from tools import (
+    PRODUCTS_DIR,
+    active_alerts,
+    connect_ro,
+    get_product,
+    init_restock_table,
+    pop_restocked,
+    product_from_row,
+)
 
 log = logging.getLogger("campus_customs")
 
@@ -69,7 +76,7 @@ async def validation_error(_: Request, exc: RequestValidationError) -> JSONRespo
 
 
 # Product photos live in data/products/<product_id>.jpg (never committed).
-app.mount("/media/products", StaticFiles(directory=db.PRODUCTS_DIR), name="product-images")
+app.mount("/media/products", StaticFiles(directory=PRODUCTS_DIR), name="product-images")
 
 
 @app.get("/api/health")
@@ -100,14 +107,14 @@ def list_products(
         sql += " WHERE " + " AND ".join(where)
     sql += " GROUP BY c.product_id ORDER BY c.name"
 
-    with closing(db.connect_ro()) as conn:
-        return [db.product_from_row(r) for r in conn.execute(sql, params).fetchall()]
+    with closing(connect_ro()) as conn:
+        return [product_from_row(r) for r in conn.execute(sql, params).fetchall()]
 
 
 @app.get("/api/products/{product_id}")
-def get_product(product_id: str) -> dict:
-    with closing(db.connect_ro()) as conn:
-        product = db.get_product(conn, product_id)
+def product_detail(product_id: str) -> dict:
+    with closing(connect_ro()) as conn:
+        product = get_product(conn, product_id)
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     return product

@@ -1,6 +1,6 @@
 """Tools the Campus Customs chatbot can call.
 
-Every tool is read-only: it opens the database with mode=ro, so the agent can
+Every read tool opens the database with mode=ro, so the agent can
 never change prices, stock, or accounts. Price and stock answers must come from here.
 
 Each tool also records the prices/quantities it returned in ShopDeps, so the
@@ -13,6 +13,7 @@ import inspect
 import json
 import logging
 import re
+import sqlite3
 import time
 import uuid
 from contextlib import closing
@@ -22,7 +23,6 @@ from pathlib import Path
 from pydantic import BaseModel
 from pydantic_ai import RunContext
 
-import db
 from models import (
     LOW_STOCK_THRESHOLD,
     CustomerContext,
@@ -93,6 +93,57 @@ STORE_INFO = {
         "visit the store or contact orderdept@campuscustoms.com."
     ),
 }
+
+
+# ---------- database access (SQLite data/campus_customs.db; also used by the web app's routes) ----------
+
+ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = ROOT / "data"
+DB_PATH = DATA_DIR / "campus_customs.db"
+PRODUCTS_DIR = DATA_DIR / "products"
+SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"]
+
+
+def connect_ro() -> sqlite3.Connection:
+    """Read-only connection: catalogue browsing and every agent tool use this."""
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def connect_rw() -> sqlite3.Connection:
+    """Writable connection: only accounts/sessions (auth.py) use this."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def product_from_row(row: sqlite3.Row) -> dict:
+    product = dict(row)
+    product["colors"] = json.loads(product["colors"])
+    product["search_tags"] = json.loads(product["search_tags"])
+    # image_file_path is "products/<file>.jpg"; exposed under the /media mount.
+    product["image_url"] = f"/media/{product['image_file_path']}"
+    return product
+
+
+def inventory_for(conn: sqlite3.Connection, product_id: str) -> list[dict]:
+    rows = conn.execute("SELECT size, quantity FROM inventory WHERE product_id = ?", (product_id,)).fetchall()
+    order = {size: i for i, size in enumerate(SIZE_ORDER)}
+    return sorted(
+        ({"size": r["size"], "quantity": r["quantity"]} for r in rows),
+        key=lambda item: order.get(item["size"], len(order)),
+    )
+
+
+def get_product(conn: sqlite3.Connection, product_id: str) -> dict | None:
+    row = conn.execute("SELECT * FROM catalogue WHERE product_id = ?", (product_id,)).fetchone()
+    if row is None:
+        return None
+    product = product_from_row(row)
+    product["inventory"] = inventory_for(conn, product_id)
+    product["total_stock"] = sum(item["quantity"] for item in product["inventory"])
+    return product
 
 
 # ---------- audit trail: append-only output/audit_trail.json (every tool call is wrapped) ----------
@@ -207,7 +258,7 @@ MAX_ACTIVE_ALERTS = 10  # per shopper; stops runaway or abusive tool calls
 
 
 def init_restock_table() -> None:
-    with closing(db.connect_rw()) as conn, conn:
+    with closing(connect_rw()) as conn, conn:
         conn.execute(
             """CREATE TABLE IF NOT EXISTS restock_alerts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -242,14 +293,14 @@ def _alert(row) -> RestockAlert:
 
 def active_alerts(user_id: int) -> list[RestockAlert]:
     """Alerts the shopper hasn't been notified about yet, with live stock."""
-    with closing(db.connect_ro()) as conn:
+    with closing(connect_ro()) as conn:
         rows = conn.execute(_SELECT + " WHERE a.user_id = ? AND a.notified_at IS NULL ORDER BY a.id", (user_id,)).fetchall()
     return [_alert(r) for r in rows]
 
 
 def create_alert(user_id: int, product_id: str, size: str) -> tuple[str, RestockAlert | None]:
     """Returns (status, alert). status: created | already_exists | limit."""
-    with closing(db.connect_rw()) as conn, conn:
+    with closing(connect_rw()) as conn, conn:
         existing = conn.execute(
             "SELECT 1 FROM restock_alerts WHERE user_id = ? AND product_id = ? AND size = ? AND notified_at IS NULL",
             (user_id, product_id, size),
@@ -274,7 +325,7 @@ def create_alert(user_id: int, product_id: str, size: str) -> tuple[str, Restock
 
 
 def cancel_alert(user_id: int, product_id: str, size: str) -> bool:
-    with closing(db.connect_rw()) as conn, conn:
+    with closing(connect_rw()) as conn, conn:
         return conn.execute(
             "DELETE FROM restock_alerts WHERE user_id = ? AND product_id = ? AND size = ? AND notified_at IS NULL",
             (user_id, product_id, size),
@@ -283,7 +334,7 @@ def cancel_alert(user_id: int, product_id: str, size: str) -> bool:
 
 def pop_restocked(user_id: int) -> list[RestockAlert]:
     """Alerts whose size is back in stock: returned once, then marked notified."""
-    with closing(db.connect_rw()) as conn, conn:
+    with closing(connect_rw()) as conn, conn:
         rows = conn.execute(
             _SELECT + " WHERE a.user_id = ? AND a.notified_at IS NULL AND COALESCE(i.quantity, 0) > 0", (user_id,)
         ).fetchall()
@@ -316,23 +367,23 @@ def _status(quantity: int) -> StockStatus:
 
 def normalize_size(size: str) -> str | None:
     key = size.strip().lower().replace(".", "")
-    return SIZE_ALIASES.get(key) or (key.upper() if key.upper() in db.SIZE_ORDER else None)
+    return SIZE_ALIASES.get(key) or (key.upper() if key.upper() in SIZE_ORDER else None)
 
 
 def _resolve(conn, product: str) -> dict | LookupFailed:
     """Find one product by product_id, exact name, or unambiguous partial name."""
     text = product.strip()
-    found = db.get_product(conn, text) or db.get_product(conn, text.lower().replace(" ", "-"))
+    found = get_product(conn, text) or get_product(conn, text.lower().replace(" ", "-"))
     if found:
         return found
     rows = conn.execute("SELECT product_id, name FROM catalogue").fetchall()
     exact = [r for r in rows if r["name"].lower() == text.lower()]
     if len(exact) == 1:
-        return db.get_product(conn, exact[0]["product_id"])
+        return get_product(conn, exact[0]["product_id"])
     words = [w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in STOPWORDS]
     partial = [r for r in rows if words and all(w in r["name"].lower() for w in words)]
     if len(partial) == 1:
-        return db.get_product(conn, partial[0]["product_id"])
+        return get_product(conn, partial[0]["product_id"])
     candidates = partial or [r for r in rows if any(w in r["name"].lower() for w in words)]
     return LookupFailed(
         error=(
@@ -388,12 +439,12 @@ def search_products(
     terms = _terms(query)
     wanted_size = normalize_size(size) if size else None
     if size and not wanted_size:
-        return LookupFailed(error=f"Unknown size {size!r}. Sizes are {', '.join(db.SIZE_ORDER)}.")
+        return LookupFailed(error=f"Unknown size {size!r}. Sizes are {', '.join(SIZE_ORDER)}.")
 
     matches: list[tuple[int, ProductSummary]] = []
-    with closing(db.connect_ro()) as conn:
+    with closing(connect_ro()) as conn:
         for row in conn.execute("SELECT * FROM catalogue").fetchall():
-            product = db.product_from_row(row)
+            product = product_from_row(row)
             haystack = " ".join(
                 [product["name"], product["garment_type"], product["description"], *product["colors"], *product["search_tags"]]
             ).lower()
@@ -404,7 +455,7 @@ def search_products(
                 continue
             if max_price is not None and product["price"] > max_price:
                 continue
-            inventory = db.inventory_for(conn, product["product_id"])
+            inventory = inventory_for(conn, product["product_id"])
             summary = ProductSummary(
                 product_id=product["product_id"],
                 name=product["name"],
@@ -456,7 +507,7 @@ def get_product_info(ctx: RunContext[ShopDeps], product: str) -> ProductInfo | L
         product: A product_id (e.g. "basic-hoodie-big-yale") or the product's name.
     """
     _log(ctx, f"get_product_info({product!r})", f"Looking up details for {_pretty(product)}…")
-    with closing(db.connect_ro()) as conn:
+    with closing(connect_ro()) as conn:
         found = _resolve(conn, product)
     if isinstance(found, LookupFailed):
         return found
@@ -482,7 +533,7 @@ def get_price(ctx: RunContext[ShopDeps], product: str) -> PriceInfo | LookupFail
         product: A product_id (e.g. "basic-hoodie-big-yale") or the product's name.
     """
     _log(ctx, f"get_price({product!r})", f"Checking the price of {_pretty(product)}…")
-    with closing(db.connect_ro()) as conn:
+    with closing(connect_ro()) as conn:
         found = _resolve(conn, product)
     if isinstance(found, LookupFailed):
         return found
@@ -509,8 +560,8 @@ def check_stock(ctx: RunContext[ShopDeps], product: str, size: str | None = None
     _log(ctx, f"check_stock({product!r}, size={size!r})", f"Checking live stock for {_pretty(product)}" + (f" ({size})" if size else "") + "…")
     wanted = normalize_size(size) if size else None
     if size and not wanted:
-        return LookupFailed(error=f"Unknown size {size!r}. Sizes are {', '.join(db.SIZE_ORDER)}.")
-    with closing(db.connect_ro()) as conn:
+        return LookupFailed(error=f"Unknown size {size!r}. Sizes are {', '.join(SIZE_ORDER)}.")
+    with closing(connect_ro()) as conn:
         found = _resolve(conn, product)
     if isinstance(found, LookupFailed):
         return found
@@ -591,8 +642,8 @@ def _alert_target(ctx: RunContext[ShopDeps], product: str, size: str) -> tuple[d
         )
     wanted = normalize_size(size)
     if not wanted:
-        return RestockAlertResult(ok=False, status="error", message=f"Unknown size {size!r}. Sizes are {', '.join(db.SIZE_ORDER)}.")
-    with closing(db.connect_ro()) as conn:
+        return RestockAlertResult(ok=False, status="error", message=f"Unknown size {size!r}. Sizes are {', '.join(SIZE_ORDER)}.")
+    with closing(connect_ro()) as conn:
         found = _resolve(conn, product)
     if isinstance(found, LookupFailed):
         return RestockAlertResult(ok=False, status="error", message=found.error)

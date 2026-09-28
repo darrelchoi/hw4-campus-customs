@@ -12,15 +12,15 @@ Older seed rows stored a list of full product snapshots; load_* handles both.
 import json
 from contextlib import closing
 
-import db
 from models import MAX_PAGE_RESULTS, ChatResponse, ChatTurn, HistoryMessage, ProductCard
+from tools import connect_ro, connect_rw, get_product
 
 MAX_STORED_CHARS = 4000  # matches ChatTurn.content max_length
 HISTORY_PAGE_SIZE = 50  # messages returned to the browser on reload
 
 
 def init_chat_tables() -> None:
-    with closing(db.connect_rw()) as conn, conn:
+    with closing(connect_rw()) as conn, conn:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id, id)")
 
 
@@ -44,7 +44,7 @@ def save_exchange(user_id: int, message: str, response: ChatResponse) -> None:
                 "total_matches": response.total_matches,
             }
         )
-    with closing(db.connect_rw()) as conn, conn:  # one transaction: both rows or neither
+    with closing(connect_rw()) as conn, conn:  # one transaction: both rows or neither
         conn.execute(
             "INSERT INTO chat_messages (user_id, role, content) VALUES (?, 'user', ?)",
             (user_id, message[:MAX_STORED_CHARS]),
@@ -65,7 +65,7 @@ def _recent_rows(conn, user_id: int, limit: int) -> list:
 
 def load_turns(user_id: int, limit: int) -> list[ChatTurn]:
     """History for the agent: the server's copy, so a browser cannot forge earlier assistant turns."""
-    with closing(db.connect_ro()) as conn:
+    with closing(connect_ro()) as conn:
         rows = _recent_rows(conn, user_id, limit)
     return [
         ChatTurn(
@@ -80,12 +80,12 @@ def load_turns(user_id: int, limit: int) -> list[ChatTurn]:
 def load_history(user_id: int, limit: int = HISTORY_PAGE_SIZE) -> list[HistoryMessage]:
     """History for the browser, with product cards rebuilt from the live catalogue and inventory."""
     messages = []
-    with closing(db.connect_ro()) as conn:
+    with closing(connect_ro()) as conn:
         for r in _recent_rows(conn, user_id, limit):
             meta = _parse_products_json(r["products_json"])
             cards = []
             for pid in dict.fromkeys(meta["product_ids"][:MAX_PAGE_RESULTS]):
-                product = db.get_product(conn, pid)
+                product = get_product(conn, pid)
                 if product:  # silently skip products removed from the catalogue
                     cards.append(ProductCard(**product))
             messages.append(
@@ -103,5 +103,5 @@ def load_history(user_id: int, limit: int = HISTORY_PAGE_SIZE) -> list[HistoryMe
 
 
 def clear_history(user_id: int) -> int:
-    with closing(db.connect_rw()) as conn, conn:
+    with closing(connect_rw()) as conn, conn:
         return conn.execute("DELETE FROM chat_messages WHERE user_id = ?", (user_id,)).rowcount

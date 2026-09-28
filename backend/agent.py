@@ -23,7 +23,6 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, Text
 from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-import db
 from models import (
     MAX_HISTORY_TURNS,
     ChatResponse,
@@ -35,7 +34,17 @@ from models import (
     ShopReply,
     ViewedProduct,
 )
-from tools import SHOP_TOOLS, SIZE_ALIASES, audit_append, audit_now, audit_short, new_run_id
+from tools import (
+    ROOT,
+    SHOP_TOOLS,
+    SIZE_ALIASES,
+    audit_append,
+    audit_now,
+    audit_short,
+    connect_ro,
+    get_product,
+    new_run_id,
+)
 
 # ---------- safety guards (back up the rules in prompts/prompt.md) ----------
 # redact_sensitive(): strips card numbers (Luhn-checked) and SSNs from shopper messages BEFORE the model,
@@ -84,8 +93,8 @@ BACKEND_DIR = Path(__file__).resolve().parent
 PROMPT_PATH = BACKEND_DIR / "prompts" / "prompt.md"
 
 # PORTKEY_API_KEY lives in the course-root .env (two levels up); an hw4/.env also works.
-load_dotenv(db.ROOT / ".env")
-load_dotenv(db.ROOT.parent / ".env")
+load_dotenv(ROOT / ".env")
+load_dotenv(ROOT.parent / ".env")
 
 ALLOWED_MODELS = {"gpt-5.6-luna", "gpt-6-astra"}
 DEFAULT_MODEL = "gpt-5.6-luna"
@@ -285,9 +294,9 @@ def to_model_history(history: list[ChatTurn]) -> list[ModelMessage]:
 def product_cards(product_ids: list[str]) -> list[ProductCard]:
     """Rebuild cards from the DB so price/stock on screen are always the real numbers."""
     cards = []
-    with closing(db.connect_ro()) as conn:
+    with closing(connect_ro()) as conn:
         for pid in dict.fromkeys(product_ids):  # de-dupe, keep order
-            product = db.get_product(conn, pid)
+            product = get_product(conn, pid)
             if product:
                 cards.append(ProductCard(**product))
     return cards
@@ -297,8 +306,8 @@ def resolve_viewed_product(page: PageContext | None) -> ViewedProduct | None:
     """Trust only product ids that exist in the catalogue; the browser could send anything."""
     if not page or not page.product_id:
         return None
-    with closing(db.connect_ro()) as conn:
-        product = db.get_product(conn, page.product_id)
+    with closing(connect_ro()) as conn:
+        product = get_product(conn, page.product_id)
     if not product:
         return None
     return ViewedProduct(

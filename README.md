@@ -9,10 +9,10 @@ A Campus Customs–style Yale merch store with a shop-assistant chatbot.
 **The agent is four files in `backend/`:**
 - `prompts/prompt.md`: system prompt, voice, safety rules
 - `agent.py`: model, agent, double-check validator, audit record
-- `tools.py`: 10 tools, plus audit-trail and restock storage helpers
+- `tools.py`: 10 tools, plus the database, audit-trail and restock storage helpers
 - `models.py`: Pydantic types
 
-The other backend files (`auth.py`, `db.py`, `chat_store.py`) are web-app plumbing for accounts, SQLite and saved chats.
+The agent imports nothing outside these four files. The other backend files (`auth.py` for accounts and `chat_store.py` for saved chats) are web-app plumbing that `main.py` uses.
 
 ## Layout
 ```
@@ -27,7 +27,7 @@ hw4/
 │   ├── main.py              # FastAPI app: run with `uvicorn main:app --reload --port 8000`
 │   ├── agent.py  models.py  tools.py
 │   ├── prompts/prompt.md
-│   └── auth.py  db.py  chat_store.py
+│   └── auth.py  chat_store.py   # web-app plumbing (accounts, saved chats), not the agent
 ├── scripts/capture_app_check.py   # Playwright screenshots for output/app_check.html
 └── output/
     ├── harness.md           # how the whole system works (start here)

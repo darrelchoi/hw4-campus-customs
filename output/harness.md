@@ -60,9 +60,9 @@ How the Campus Customs shop and its AI shop assistant work: the architecture, da
 | `backend/main.py` | FastAPI app and all routes (run with `uvicorn main:app` from `backend/`) |
 | `backend/agent.py` | Model setup, agent, dynamic instructions, **safety guards** (card/SSN redaction, allowed emails), double-check validator, `run_chat()` + audit record |
 | `backend/prompts/prompt.md` | System prompt: voice, tool routing, honesty rules, **safety rules** |
-| `backend/tools.py` | The 10 agent tools (+ synonyms, size aliases, store info), the **audit-trail writer** + tool wrapper (§8), and **restock-alert storage** |
+| `backend/tools.py` | The 10 agent tools (+ synonyms, size aliases, store info), the **SQLite helpers** (`connect_ro/rw`, `get_product`…), the **audit-trail writer** + tool wrapper (§8), and **restock-alert storage** |
 | `backend/models.py` | All Pydantic / PydanticAI types (§5) |
-| `backend/auth.py` · `db.py` · `chat_store.py` | Web-app plumbing (not part of the agent): accounts/sessions · SQLite helpers · saved chats |
+| `backend/auth.py` · `chat_store.py` | Web-app plumbing used by `main.py` (not part of the agent): accounts/sessions · saved chats. **The agent itself is only the four files `prompts/prompt.md`, `agent.py`, `tools.py`, `models.py`.** |
 | `frontend/src/` | React app: `pages/`, `components/` (NavBar, ChatWidget, ChatResultsSection, BagDrawer, ProductCard…), `api.ts`, `auth.tsx`, `chatResults.tsx`, `bag.tsx`, `celebrate.ts`, `pageContext.ts` |
 | `scripts/capture_app_check.py` | Playwright test that drives the live site and saves Problem 11 screenshots |
 | `output/` | `harness.md`, `audit_trail.json`, `usability.md`, `design.md`, `app_check.html` + images, `site_research.md` |
@@ -83,7 +83,7 @@ cd backend
 source ../.venv/bin/activate
 uvicorn main:app --reload --port 8000
 ```
-Imports are flat (`import db`), so the app must start from `backend/`. `prompt.md` is read at startup; the preview config adds `--reload-include "*.md"`.
+Imports are flat (`from tools import …`), so the app must start from `backend/`. `prompt.md` is read at startup; the preview config adds `--reload-include "*.md"`.
 
 **Frontend** (terminal 2):
 ```bash
@@ -123,7 +123,7 @@ Then open `output/app_check.html`.
 | Auth | PBKDF2-SHA256 **600k** iterations, 16-byte salt; 7-day HttpOnly session; 5 failed logins / 15 min → 429 | `auth.py` |
 | Audit fields | ≤ 240 chars per args/result/message/reply, emails redacted | `tools.MAX_FIELD` |
 | Streaming | SSE `status` → `done` / `error`. Client disconnect cancels the agent task. | `main.chat_stream()` |
-| DB access | Catalogue + all read tools: **read-only** (`mode=ro`). Writes only in auth, chat history, restock alerts. | `db.connect_ro/rw` |
+| DB access | Catalogue + all read tools: **read-only** (`mode=ro`). Writes only in auth, chat history, restock alerts. | `tools.connect_ro/rw` |
 
 ---
 
@@ -261,7 +261,7 @@ Every tool is wrapped by `tools.audited`, which logs each call to the audit trai
 | **Double-check validator:** card ids came from a tool this turn; every `$` amount ∈ prices seen (or typed by the shopper); every stock count ∈ quantities seen; a sold-out requested size must be called "sold out"; no alert/cancel claims without a successful tool call; **no email addresses except the store's and the shopper's own** | 2, 3, 4 | `agent.double_check_reply` → `ModelRetry` (audited as `double_check_retry`) |
 | Server-built product cards (the model only returns ids) | 4 | `agent.product_cards` |
 | **Card-number (Luhn) and SSN redaction** before the model, chat history, and the audit trail | 3 | `agent.redact_sensitive`, `main.sanitize`, plus a dynamic "Safety notice" instruction |
-| Only 10 narrow tools, and read tools use a read-only DB connection. The write tools touch only `restock_alerts`, with `user_id` from the session (the model can't pass a user). | 2, 3 | `tools.py`, `db.connect_ro` |
+| Only 10 narrow tools, and read tools use a read-only DB connection. The write tools touch only `restock_alerts`, with `user_id` from the session (the model can't pass a user). | 2, 3 | `tools.py`, `tools.connect_ro` |
 | Alert rules: logged in, size actually sold out, ≤10 active, deduplicated | 2 | `create_restock_alert` |
 | Logged-in history loaded from the DB (a browser can't forge earlier "assistant" promises) | 5 | `main.answer` |
 | `page.product_id` accepted only if it exists in the catalogue | 5 | `agent.resolve_viewed_product` |
